@@ -1,51 +1,40 @@
 /*
- * Copyright (c) 2022, CATIE
+ * Copyright (c) 2020 Arm Limited and affiliates.
  * SPDX-License-Identifier: Apache-2.0
  */
 #include "mbed.h"
 
 DigitalOut led1(LED1);
-InterruptIn button(BUTTON1);
+Thread thread1, thread2;
 
-using namespace std::chrono;
-Timer t;
+Mutex stdio_mutex; 
 
-namespace {
-#define PERIOD_MS 2000ms
+void ping_thread()
+{
+    stdio_mutex.lock();
+    for(int i = 0; i < 100; ++i) {
+        printf("Ping \n", i);
+    }
+    stdio_mutex.unlock();
 }
 
-bool A = 0;
-uint64_t elapsed_time = 0; 
-
-void on_button_press()
+void pong_thread()
 {
-    led1 = 1;       
-    t.start(); 
-    A=0;          
-}
-
-void on_button_release()
-{
-    led1 = 0;       
-    t.stop();   
-    elapsed_time = duration_cast<milliseconds>(t.elapsed_time()).count();    
-    t.reset();   
-    A=1;        
+     stdio_mutex.lock();
+    for(int i = 0; i < 100; ++i) {
+        printf("Pong \n", i);
+    }
+    stdio_mutex.unlock();
 }
 
 int main()
 {
-    button.rise(&on_button_press); 
-    button.fall(&on_button_release);
+    thread1.start(ping_thread);
+    thread2.start(pong_thread);
 
     while (true) {
-
-         if (A == 1) {
-            printf("The time taken was %llu milliseconds\n", elapsed_time);
-           
-            A = 0; 
-        }
-        
-        ThisThread::sleep_for(50ms); 
+        led1 = !led1;
+        printf("Alive! \n");
+        ThisThread::sleep_for(500);
     }
 }
